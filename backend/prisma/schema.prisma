@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  email         String    @unique
+  password      String
+  fullName      String
+  role          Role      @default(USER)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLogin     DateTime?
+  devices       Device[]
+  groups        Group[]
+  automations   Automation[]
+  logs          Log[]
+  settings      Settings?
+  sessions      Session[]
+  proxies       Proxy[]
+  files         File[]
+}
+
+model Device {
+  id            String    @id @default(uuid())
+  name          String
+  model         String
+  manufacturer  String
+  androidVersion String
+  fingerprint   String
+  androidId     String    @unique
+  imei          String    @unique
+  serialNumber  String    @unique
+  ram           Int
+  cpu           String
+  storage       Int
+  resolution    String
+  status        DeviceStatus @default(OFFLINE)
+  proxyId       String?
+  groupId       String?
+  tags          String[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastActivity  DateTime?
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  proxy         Proxy?    @relation(fields: [proxyId], references: [id])
+  group         Group?    @relation(fields: [groupId], references: [id])
+  applications  Application[]
+  files         File[]
+  sessions      Session[]
+  logs          Log[]
+}
+
+model Group {
+  id            String    @id @default(uuid())
+  name          String
+  description   String?
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  devices       Device[]
+  automations   Automation[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Proxy {
+  id            String    @id @default(uuid())
+  host          String
+  port          Int
+  username      String?
+  password      String?
+  type          ProxyType @default(HTTP)
+  active        Boolean   @default(true)
+  lastTest      DateTime?
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  devices       Device[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Automation {
+  id            String    @id @default(uuid())
+  name          String
+  description   String?
+  flow          Json
+  schedule      String?
+  enabled       Boolean   @default(true)
+  lastRun       DateTime?
+  nextRun       DateTime?
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  groupId       String?
+  group         Group?    @relation(fields: [groupId], references: [id])
+  logs          Log[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Application {
+  id            String    @id @default(uuid())
+  name          String
+  packageName   String
+  version       String
+  apkPath       String
+  size          Int
+  installed     Boolean   @default(false)
+  deviceId      String
+  device        Device    @relation(fields: [deviceId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model File {
+  id            String    @id @default(uuid())
+  name          String
+  path          String
+  size          Int
+  type          String
+  deviceId      String?
+  device        Device?   @relation(fields: [deviceId], references: [id])
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Log {
+  id            String    @id @default(uuid())
+  level         LogLevel  @default(INFO)
+  message       String
+  details       Json?
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id])
+  deviceId      String?
+  device        Device?   @relation(fields: [deviceId], references: [id])
+  automationId  String?
+  automation    Automation? @relation(fields: [automationId], references: [id])
+  createdAt     DateTime  @default(now())
+}
+
+model Settings {
+  id            String    @id @default(uuid())
+  theme         String    @default("dark")
+  language      String    @default("pt-BR")
+  notifications Boolean   @default(true)
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Webhook {
+  id            String    @id @default(uuid())
+  url           String
+  events        String[]
+  active        Boolean   @default(true)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Session {
+  id            String    @id @default(uuid())
+  token         String    @unique
+  deviceId      String?
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  device        Device?   @relation(fields: [deviceId], references: [id])
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+}
+
+enum Role {
+  ADMIN
+  USER
+  VIEWER
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  MAINTENANCE
+  ERROR
+}
+
+enum ProxyType {
+  HTTP
+  HTTPS
+  SOCKS4
+  SOCKS5
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+  DEBUG
+}
